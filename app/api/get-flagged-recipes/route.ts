@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase-client";
 export async function GET() {
   try {
     const { data, error } = await supabase
-      .from("recipes")
+      .from("recipes-hub")
       .select("*")
       .gt("flags", 0)
       .order("flags", { ascending: false });
