@@ -19,15 +19,16 @@ export default function FlagModal({
 }: FlagModalProps) {
   const dialogRef = useRef<HTMLDivElement | null>(null);
 
-  // Close on Escape while open.
+  // Close on Escape while open — but not mid-submit (the request keeps running
+  // and its result would be lost).
   useEffect(() => {
     if (!isOpen) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape" && !loading) onClose();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, loading]);
 
   // Focus management, focus trap, focus restore, body-scroll lock.
   useModalA11y(isOpen, dialogRef);
@@ -37,7 +38,9 @@ export default function FlagModal({
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-ctp-overlay2/20 backdrop-blur-2xl"
-      onClick={onClose}
+      onClick={() => {
+        if (!loading) onClose();
+      }}
       role="dialog"
       aria-modal="true"
       aria-labelledby="flag-modal-title"
@@ -50,8 +53,9 @@ export default function FlagModal({
       >
         <button
           onClick={onClose}
+          disabled={loading}
           aria-label="Close dialog"
-          className="absolute top-4 right-4 text-ctp-subtext0 hover:text-ctp-text"
+          className="absolute top-2 right-2 p-2 text-ctp-subtext0 hover:text-ctp-text disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <X size={24} />
         </button>

@@ -26,7 +26,10 @@ export default function RecipeCard({ recipe }: RecipeCardProps) {
       href={`/app/recipe-hub/${id}`}
       className="bg-ctp-mantle border border-ctp-surface0 rounded-xl p-5 text-left transition-all hover:shadow-lg hover:-translate-y-1 hover:border-ctp-green"
     >
-      <h3 className="text-xl font-bold text-ctp-green truncate" title={title}>
+      <h3
+        className="text-xl font-bold text-ctp-green line-clamp-2"
+        title={title}
+      >
         {title}
       </h3>
       <p className="text-ctp-subtext0 capitalize mt-1 mb-3">{category}</p>

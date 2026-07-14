@@ -3,7 +3,7 @@ import { Ratelimit } from "@upstash/ratelimit";
 import { Redis } from "@upstash/redis";
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
-import { getClientIp } from "@/lib/request-utils";
+import { getClientIp, getClientIpFromHeaders } from "@/lib/request-utils";
 
 // "write" = tight limit for state-changing endpoints; "read" = generous limit
 // for public GET endpoints (throttles scraping/abuse of the fuzzy search RPC
@@ -62,76 +62,53 @@ export interface RateLimitResult {
  * limiter error at runtime fails **open** either way — a brief Upstash blip
  * shouldn't take down the endpoints.
  */
+async function checkRateLimitForIp(
+  ip: string,
+  bucket: string,
+  kind: LimitKind,
+): Promise<RateLimitResult> {
+  const rl = getLimiter(kind);
+  if (!rl) {
+    if (kind === "read") return { ok: true };
+    const isProd =
+      !!process.env.VERCEL || process.env.NODE_ENV === "production";
+    return isProd ? { ok: false, retryAfter: 60 } : { ok: true };
+  }
+
+  try {
+    const { success, reset } = await rl.limit(`${bucket}:${ip}`);
+    if (success) return { ok: true };
+
+    const retryAfter = Math.max(1, Math.ceil((reset - Date.now()) / 1000));
+    return { ok: false, retryAfter };
+  } catch (err) {
+    console.error("Rate limiter error — allowing request (fail open):", err);
+    return { ok: true };
+  }
+}
+
 export async function checkRateLimit(
   request: NextRequest,
   bucket: string,
   kind: LimitKind = "write",
 ): Promise<RateLimitResult> {
-  const rl = getLimiter(kind);
-  if (!rl) {
-    if (kind === "read") return { ok: true };
-    const isProd =
-      !!process.env.VERCEL || process.env.NODE_ENV === "production";
-    return isProd ? { ok: false, retryAfter: 60 } : { ok: true };
-  }
-
-  try {
-    const key = `${bucket}:${getClientIp(request)}`;
-    const { success, reset } = await rl.limit(key);
-    if (success) return { ok: true };
-
-    const retryAfter = Math.max(1, Math.ceil((reset - Date.now()) / 1000));
-    return { ok: false, retryAfter };
-  } catch (err) {
-    console.error("Rate limiter error — allowing request (fail open):", err);
-    return { ok: true };
-  }
+  return checkRateLimitForIp(getClientIp(request), bucket, kind);
 }
 
 /**
- * Header-based twin of `getClientIp` (request-utils.ts) for contexts that hold a
- * bare `Headers` object rather than a NextRequest — e.g. server actions reading
- * `await headers()`. Same precedence: prefer the Vercel-set, unspoofable
- * `x-real-ip`, fall back to the left-most `x-forwarded-for` hop off-Vercel.
- */
-export function getClientIpFromHeaders(h: Headers): string {
-  const realIp = h.get("x-real-ip")?.trim();
-  if (realIp) return realIp;
-  const fwd = h.get("x-forwarded-for");
-  if (fwd) return fwd.split(",")[0].trim() || "unknown";
-  return "unknown";
-}
-
-/**
- * Rate-limit twin of `checkRateLimit` for **server actions**, which have no
- * NextRequest — it reads the incoming request headers via `await headers()`
- * from next/headers. Same limiter, keying, and fail-open/closed semantics as
- * `checkRateLimit` (read fails open; write fails closed only in production; a
- * runtime limiter error fails open).
+ * Twin of `checkRateLimit` for **server actions**, which have no NextRequest —
+ * it reads the incoming request headers via `await headers()` from next/headers.
+ * Same limiter, keying and fail-open/closed semantics.
  */
 export async function checkRateLimitForAction(
   bucket: string,
   kind: LimitKind = "write",
 ): Promise<RateLimitResult> {
-  const rl = getLimiter(kind);
-  if (!rl) {
-    if (kind === "read") return { ok: true };
-    const isProd =
-      !!process.env.VERCEL || process.env.NODE_ENV === "production";
-    return isProd ? { ok: false, retryAfter: 60 } : { ok: true };
-  }
-
-  try {
-    const key = `${bucket}:${getClientIpFromHeaders(await headers())}`;
-    const { success, reset } = await rl.limit(key);
-    if (success) return { ok: true };
-
-    const retryAfter = Math.max(1, Math.ceil((reset - Date.now()) / 1000));
-    return { ok: false, retryAfter };
-  } catch (err) {
-    console.error("Rate limiter error — allowing request (fail open):", err);
-    return { ok: true };
-  }
+  return checkRateLimitForIp(
+    getClientIpFromHeaders(await headers()),
+    bucket,
+    kind,
+  );
 }
 
 /** Standard 429 response for a failed rate-limit check. */

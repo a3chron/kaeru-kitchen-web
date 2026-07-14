@@ -8,13 +8,17 @@ interface HeaderProps {
 }
 
 export default function Header({ onSubmitClick }: HeaderProps) {
+  // On the hub grid (the only page passing onSubmitClick) the brand is the page's
+  // <h1>; on detail/deep-link pages the recipe title owns the <h1>, so the brand
+  // renders as a <p> to avoid two <h1>s on one page.
+  const Brand = onSubmitClick ? "h1" : "p";
   return (
     <header className="bg-ctp-mantle border-b border-ctp-surface0 sticky top-0 z-10">
       <div className="max-w-5xl mx-auto p-4 flex flex-wrap justify-between items-center gap-3">
         <Link href="/app/hub">
-          <h1 className="text-2xl font-bold text-ctp-green">
+          <Brand className="text-2xl font-bold text-ctp-green">
             Kaeru&apos;s Kitchen Hub
-          </h1>
+          </Brand>
         </Link>
         {onSubmitClick && (
           <button

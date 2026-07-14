@@ -60,7 +60,8 @@ export default function RecipeDetail(props: RecipeDetailProps) {
             <h1 className="text-3xl md:text-4xl font-bold text-ctp-text break-words">
               {recipe_data.title}
             </h1>
-            {/* Review count (ratings are submitted from the app, not here) */}
+            {/* Review aggregate. No client currently submits ratings, so this
+                shows "0 reviews" until the rating feature is wired up. */}
             {hub && (
               <div className="flex items-center gap-1.5 text-ctp-subtext0 mt-2">
                 {hub.average_review !== 0 && (
@@ -80,7 +81,7 @@ export default function RecipeDetail(props: RecipeDetailProps) {
               <button
                 onClick={() => setFlagModalOpen(true)}
                 aria-label="Flag this recipe"
-                className="flex-shrink-0 flex items-center justify-center gap-2 font-semibold px-4 py-2 rounded-lg transition-opacity bg-ctp-overlay1 hover:bg-ctp-red text-ctp-base hover:opacity-90"
+                className="flex-shrink-0 flex items-center justify-center gap-2 font-semibold px-4 py-2 rounded-lg transition-colors border border-ctp-surface1 bg-ctp-surface0 text-ctp-red hover:bg-ctp-red hover:text-ctp-base focus-visible:outline-2 focus-visible:outline-ctp-blue"
               >
                 <Flag />
               </button>
