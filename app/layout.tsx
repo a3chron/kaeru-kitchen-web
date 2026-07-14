@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     description: "Browse and share Kaeru's Kitchen recipes",
     type: "website",
   },
-  twitter: { card: "summary" },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({

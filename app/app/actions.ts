@@ -16,6 +16,29 @@ export async function fetchRecipes(
   const rl = await checkRateLimitForAction("fetch-recipes", "read");
   if (!rl.ok) throw new Error("Rate limited");
 
+  const safePage = clampPage(Math.floor(Number(page) || 0));
+  const searchText = (filters.query ?? "").trim().slice(0, 200);
+
+  // With a search term, use the same fuzzy-search RPC the mobile /api/get-recipes
+  // uses, so web search results match the app. The RPC re-validates/clamps all
+  // arguments internally.
+  if (searchText) {
+    const { data, error } = await supabaseServer.rpc("fuzzy_search_recipes", {
+      search_text: searchText,
+      category_filter: filters.category,
+      language_filter: filters.language,
+      cooking_filter: filters.cookingTime,
+      sort_by: filters.sortBy,
+      limit_count: RECIPES_PAGE_SIZE,
+      offset_count: safePage * RECIPES_PAGE_SIZE,
+    });
+    if (error) {
+      console.error("Error searching recipes:", error);
+      throw new Error("Failed to fetch recipes");
+    }
+    return (data as HubRecipeRow[] | null) || [];
+  }
+
   let query = supabaseServer
     .from("recipes_hub")
     .select("*")
@@ -56,8 +79,7 @@ export async function fetchRecipes(
   // Stable tiebreaker so offset paging can't skip or duplicate rows.
   query = query.order("id", { ascending: false });
 
-  // 5. Pagination (page is 0-based, clamped)
-  const safePage = clampPage(Math.floor(Number(page) || 0));
+  // 5. Pagination (page is 0-based, clamped; safePage computed above)
   const from = safePage * RECIPES_PAGE_SIZE;
   const to = from + RECIPES_PAGE_SIZE - 1;
   query = query.range(from, to);
@@ -70,4 +92,48 @@ export async function fetchRecipes(
     throw new Error("Failed to fetch recipes");
   }
   return (data as HubRecipeRow[] | null) || [];
+}
+
+/**
+ * Distinct languages that actually have approved recipes on the hub, as
+ * {code,label}. Powers the filter-bar language dropdown so it lists only
+ * languages with content instead of all ~184 ISO codes (which mostly yield an
+ * empty result).
+ */
+export async function getAvailableLanguages(): Promise<
+  { code: string; label: string }[]
+> {
+  const rl = await checkRateLimitForAction("get-languages", "read");
+  if (!rl.ok) return [];
+
+  const { data, error } = await supabaseServer
+    .from("recipes_hub")
+    .select("language")
+    .eq("is_approved", true)
+    .limit(5000);
+
+  if (error || !data) {
+    if (error) console.error("Error loading languages:", error);
+    return [];
+  }
+
+  const codes = Array.from(
+    new Set(
+      data
+        .map((r) => (r as { language: string | null }).language)
+        .filter((l): l is string => !!l),
+    ),
+  );
+
+  const ISO6391 = (await import("iso-639-1")).default;
+  return codes
+    .map((code) => {
+      const name = ISO6391.getName(code);
+      const nativeName = ISO6391.getNativeName(code);
+      return {
+        code,
+        label: name ? `${name} (${nativeName})` : code,
+      };
+    })
+    .sort((a, b) => a.label.localeCompare(b.label));
 }

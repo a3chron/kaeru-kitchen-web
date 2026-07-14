@@ -83,9 +83,14 @@ export const CATEGORY_VALUES = ["all", ...RECIPE_CATEGORIES] as CategoryValue[];
  */
 export const APP_SCHEMES = ["nrecipe", "nrecipe_premium"] as const;
 
-/** Play Store listing offered as the fallback when no app grabs the link. */
-export const PLAY_STORE_URL =
+/** Play Store listings offered as the fallback when no app grabs the link. The
+ *  hub serves both apps, so a visitor may want either. */
+export const PLAY_STORE_URL_FREE =
   "https://play.google.com/store/apps/details?id=com.a3chron.nrecipe";
+export const PLAY_STORE_URL_PREMIUM =
+  "https://play.google.com/store/apps/details?id=com.a3chron.nrecipe_premium";
+/** @deprecated Prefer PLAY_STORE_URL_FREE / PLAY_STORE_URL_PREMIUM. */
+export const PLAY_STORE_URL = PLAY_STORE_URL_FREE;
 
 /** Build a mobile deep link, e.g. deepLinkTo("nrecipe", `app/shared/${id}`). */
 export function deepLinkTo(scheme: string, path: string): string {

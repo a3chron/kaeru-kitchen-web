@@ -49,6 +49,6 @@ export async function generateMetadata({ params }: PageProps) {
     title,
     description,
     openGraph: { title, description, type: "article" },
-    twitter: { card: "summary", title, description },
+    twitter: { card: "summary_large_image", title, description },
   };
 }

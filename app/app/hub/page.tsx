@@ -1,8 +1,15 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { Suspense, useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import type { ReadonlyURLSearchParams } from "next/navigation";
 import { HubRecipeRow } from "@/types/recipe";
-import { RECIPES_PAGE_SIZE } from "@/lib/constants";
+import {
+  RECIPES_PAGE_SIZE,
+  CATEGORY_VALUES,
+  COOKING_TIME_VALUES,
+  SORT_VALUES,
+} from "@/lib/constants";
 import Filters, { FilterState } from "@/components/filters";
 import RecipeCard from "@/components/recipe-card";
 import SubmitModal from "@/components/submit-modal";
@@ -14,9 +21,47 @@ const DEFAULT_FILTERS: FilterState = {
   cookingTime: "all",
   sortBy: "newest",
   language: "all",
+  query: "",
 };
 
-export default function HomePage() {
+// Read filter state from the URL, validating each value against its allowlist so
+// a hand-edited URL can't inject an unexpected filter (language is validated
+// server-side by the query, so any string is accepted here).
+function readFilters(sp: ReadonlyURLSearchParams): FilterState {
+  const category = sp.get("category") ?? "";
+  const cookingTime = sp.get("cookingTime") ?? "";
+  const sortBy = sp.get("sortBy") ?? "";
+  return {
+    category: (CATEGORY_VALUES as string[]).includes(category)
+      ? (category as FilterState["category"])
+      : "all",
+    cookingTime: (COOKING_TIME_VALUES as string[]).includes(cookingTime)
+      ? (cookingTime as FilterState["cookingTime"])
+      : "all",
+    sortBy: (SORT_VALUES as string[]).includes(sortBy)
+      ? (sortBy as FilterState["sortBy"])
+      : "newest",
+    language: sp.get("language") || "all",
+    query: (sp.get("q") || "").slice(0, 200),
+  };
+}
+
+// Serialize non-default filters into a query string (defaults omitted to keep
+// the URL clean and shareable).
+function writeParams(filters: FilterState): string {
+  const p = new URLSearchParams();
+  if (filters.category !== "all") p.set("category", filters.category);
+  if (filters.cookingTime !== "all") p.set("cookingTime", filters.cookingTime);
+  if (filters.sortBy !== "newest") p.set("sortBy", filters.sortBy);
+  if (filters.language !== "all") p.set("language", filters.language);
+  if (filters.query) p.set("q", filters.query);
+  return p.toString();
+}
+
+function HubContent() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [recipes, setRecipes] = useState<HubRecipeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -26,13 +71,24 @@ export default function HomePage() {
   const [loadMoreError, setLoadMoreError] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submitCount, setSubmitCount] = useState<number | null>(null);
-  const [filters, setFilters] = useState<FilterState>(DEFAULT_FILTERS);
+  // Initialize from the URL so filtered views are bookmarkable / survive back-nav.
+  const [filters, setFilters] = useState<FilterState>(() =>
+    readFilters(searchParams),
+  );
 
   const filtersAreDefault =
     filters.category === DEFAULT_FILTERS.category &&
     filters.cookingTime === DEFAULT_FILTERS.cookingTime &&
     filters.sortBy === DEFAULT_FILTERS.sortBy &&
-    filters.language === DEFAULT_FILTERS.language;
+    filters.language === DEFAULT_FILTERS.language &&
+    filters.query === DEFAULT_FILTERS.query;
+
+  // Reflect filters into the URL (replace, no scroll jump) so state is preserved
+  // across navigation and shareable.
+  useEffect(() => {
+    const qs = writeParams(filters);
+    router.replace(qs ? `/app/hub?${qs}` : "/app/hub", { scroll: false });
+  }, [filters, router]);
 
   // Monotonic request id: a filter change or a newer load invalidates any
   // in-flight fetch so a stale response can't append to (or overwrite) the list.
@@ -105,7 +161,7 @@ export default function HomePage() {
             <button
               onClick={() => setSubmitCount(null)}
               aria-label="Dismiss"
-              className="text-ctp-subtext0 hover:text-ctp-text font-semibold"
+              className="shrink-0 -m-2 p-2 text-ctp-subtext0 hover:text-ctp-text font-semibold"
             >
               ×
             </button>
@@ -113,9 +169,18 @@ export default function HomePage() {
         )}
 
         {loading ? (
-          <p className="text-ctp-subtext0 text-center py-10" aria-live="polite">
-            Loading recipes...
-          </p>
+          <div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-6"
+            aria-live="polite"
+            aria-busy="true"
+          >
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-40 rounded-lg bg-ctp-surface0 animate-pulse"
+              />
+            ))}
+          </div>
         ) : error ? (
           <div className="text-center py-10">
             <p className="text-ctp-red">
@@ -185,5 +250,14 @@ export default function HomePage() {
         }}
       />
     </>
+  );
+}
+
+export default function HomePage() {
+  // useSearchParams() requires a Suspense boundary during prerender.
+  return (
+    <Suspense>
+      <HubContent />
+    </Suspense>
   );
 }
