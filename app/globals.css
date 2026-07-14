@@ -1,12 +1,8 @@
 @import "tailwindcss";
 @config "../tailwind.config.ts";
 
-/* Font */
-@import "@fontsource/ibm-plex-mono/300.css"; /* Light */
-@import "@fontsource/ibm-plex-mono/400.css"; /* Regular */
-@import "@fontsource/ibm-plex-mono/500.css"; /* Medium */
-@import "@fontsource/ibm-plex-mono/600.css"; /* Semi-Bold */
-@import "@fontsource/ibm-plex-mono/700.css"; /* Bold */
+/* IBM Plex Mono is loaded once via next/font in app/layout.tsx (applied on
+   <body>); no @fontsource import needed. */
 
 @theme {
   /* Latte (light) */

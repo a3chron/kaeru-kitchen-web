@@ -7,11 +7,7 @@ const config: Config = {
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {
-      fontFamily: {
-        plex: ["IBM Plex Mono", "Menlo", "monospace"],
-      },
-    },
+    extend: {},
   },
   darkMode: "media",
   plugins: [require("@tailwindcss/forms")],
