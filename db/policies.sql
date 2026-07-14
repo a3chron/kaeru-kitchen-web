@@ -104,7 +104,11 @@ begin
 
   if found then
     update public.recipes_hub
-      set flags = flags + 1
+      set flags = flags + 1,
+          -- Auto-hide once flags reach the threshold. Every read path filters
+          -- is_approved = true, so this removes abusive content from public view
+          -- until a moderator re-approves it (get-flagged-recipes still lists it).
+          is_approved = case when flags + 1 >= 5 then false else is_approved end
       where id = p_recipe_id
       returning flags into v_flags;
   else

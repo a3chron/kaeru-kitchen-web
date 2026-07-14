@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
-import { supabaseServer } from "@/lib/supabase-server";
 import { isUuid } from "@/lib/request-utils";
 import { checkRateLimit, rateLimited } from "@/lib/rate-limit";
 import { withApiHandler } from "@/lib/api-handler";
+import { fetchRecipeById, HUB_PUBLIC_COLUMNS } from "@/app/app/recipe-data";
+import { HubRecipeRow } from "@/types/recipe";
 
 export const GET = withApiHandler(async (request) => {
   const rl = await checkRateLimit(request, "get-hub-recipe", "read");
@@ -17,27 +18,16 @@ export const GET = withApiHandler(async (request) => {
     );
   }
 
-  const { data, error } = await supabaseServer
-    .from("recipes_hub")
-    .select("*")
-    .eq("id", id)
-    .eq("is_approved", true)
-    .maybeSingle();
+  // Shared single-fetch helper: explicit public columns (no flags/is_approved),
+  // approved-only, throws on a real DB error (mapped to 500 by withApiHandler).
+  const recipe = await fetchRecipeById<HubRecipeRow>("recipes_hub", id, {
+    approvedOnly: true,
+    columns: HUB_PUBLIC_COLUMNS,
+  });
 
-  if (error) {
-    console.error("Error fetching recipe:", error);
-    return NextResponse.json(
-      { error: "Failed to fetch recipe" },
-      { status: 500 },
-    );
-  }
-
-  if (!data) {
+  if (!recipe) {
     return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
   }
 
-  return NextResponse.json({
-    success: true,
-    recipe: data,
-  });
+  return NextResponse.json({ success: true, recipe });
 });

@@ -27,12 +27,17 @@ export function isValidLanguage(value: unknown): value is string {
  * dedup. Falling back to its first hop is acceptable off-Vercel where there is
  * no better signal.
  */
-export function getClientIp(request: NextRequest): string {
-  const realIp = request.headers.get("x-real-ip")?.trim();
+export function getClientIpFromHeaders(h: Headers): string {
+  const realIp = h.get("x-real-ip")?.trim();
   if (realIp) return realIp;
-  const fwd = request.headers.get("x-forwarded-for");
+  const fwd = h.get("x-forwarded-for");
   if (fwd) return fwd.split(",")[0].trim() || "unknown";
   return "unknown";
+}
+
+/** NextRequest convenience wrapper around {@link getClientIpFromHeaders}. */
+export function getClientIp(request: NextRequest): string {
+  return getClientIpFromHeaders(request.headers);
 }
 
 /**
@@ -78,10 +83,36 @@ export async function readJsonBody(
   if (Number.isFinite(contentLength) && contentLength > MAX_BODY_BYTES) {
     return { ok: false, status: 413, error: "Payload too large" };
   }
-  const raw = await request.text();
-  if (raw.length > MAX_BODY_BYTES) {
-    return { ok: false, status: 413, error: "Payload too large" };
+
+  // Stream the body with a running byte cap instead of buffering it all first: a
+  // missing or spoofed content-length must not let us read an unbounded body into
+  // memory. Count real bytes (not UTF-16 code units, which under-count multi-byte
+  // characters) against the cap.
+  let raw: string;
+  const stream = request.body;
+  if (!stream) {
+    raw = await request.text();
+    if (Buffer.byteLength(raw, "utf8") > MAX_BODY_BYTES) {
+      return { ok: false, status: 413, error: "Payload too large" };
+    }
+  } else {
+    const reader = stream.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > MAX_BODY_BYTES) {
+        await reader.cancel();
+        return { ok: false, status: 413, error: "Payload too large" };
+      }
+      chunks.push(value);
+    }
+    raw = Buffer.concat(chunks).toString("utf8");
   }
+
   try {
     return { ok: true, body: JSON.parse(raw) };
   } catch {
