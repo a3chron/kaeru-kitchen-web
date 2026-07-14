@@ -8,8 +8,15 @@ const plex = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "n-recipe Hub",
-  description: "Browse and share n-recipe recipes",
+  metadataBase: new URL("https://kaeru-kitchen-hub.vercel.app"),
+  title: "Kaeru's Kitchen Hub",
+  description: "Browse and share Kaeru's Kitchen recipes",
+  openGraph: {
+    title: "Kaeru's Kitchen Hub",
+    description: "Browse and share Kaeru's Kitchen recipes",
+    type: "website",
+  },
+  twitter: { card: "summary" },
 };
 
 export default function RootLayout({
@@ -18,7 +25,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="ctp-latte dark:ctp-mocha">
+    <html lang="en">
       <body
         className={`${plex.className} bg-ctp-base text-ctp-text transition-colors duration-300`}
       >

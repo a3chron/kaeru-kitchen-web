@@ -1,45 +1,38 @@
 "use client";
 
-import { RecipeCategoryType } from "@/types/recipe";
+import {
+  CategoryValue,
+  COOKING_TIME_OPTIONS,
+  CookingTimeValue,
+  RECIPE_CATEGORIES,
+  SORT_OPTIONS,
+  SortValue,
+} from "@/lib/constants";
+import { DEFAULT_LANGUAGES, loadLanguages } from "@/lib/languages";
 import { useEffect, useState } from "react";
 
-const categories: { value: RecipeCategoryType | "all"; label: string }[] = [
+// Derived from the single source of truth in lib/constants.ts so the options
+// offered here can never drift from what the server accepts.
+const categories: { value: CategoryValue; label: string }[] = [
   { value: "all", label: "All" },
-  { value: "breakfast", label: "Breakfast" },
-  { value: "lunch", label: "Lunch" },
-  { value: "dinner", label: "Dinner" },
-  { value: "snack", label: "Snack" },
-  { value: "dessert", label: "Dessert" },
-  { value: "drink", label: "Drinks" },
+  ...RECIPE_CATEGORIES.map((c) => ({
+    value: c as CategoryValue,
+    label: c.charAt(0).toUpperCase() + c.slice(1),
+  })),
 ];
 
-const cookingTimes: { value: FilterState["cookingTime"]; label: string }[] = [
-  { value: "all", label: "Any time" },
-  { value: "0-30", label: "≤ 30 min" },
-  { value: "30-60", label: "30-60 min" },
-  { value: "60+", label: "60+ min" },
-];
+const cookingTimes = COOKING_TIME_OPTIONS;
+const sortOptions = SORT_OPTIONS;
 
-const sortOptions: { value: FilterState["sortBy"]; label: string }[] = [
-  { value: "newest", label: "Newest" },
-  { value: "reviews", label: "Top Rated" },
-];
-
-const languageDefaultOptions: {
-  value: FilterState["language"];
-  label: string;
-}[] = [
+const languageDefaultOptions: { value: string; label: string }[] = [
   { value: "all", label: "All Languages" },
-  { value: "en", label: "English (English)" },
-  { value: "de", label: "German (Deutsch)" },
-  { value: "es", label: "Spanish (Español)" },
-  { value: "fr", label: "French (Français)" },
+  ...DEFAULT_LANGUAGES.map((l) => ({ value: l.code, label: l.label })),
 ];
 
 export interface FilterState {
-  category: RecipeCategoryType | "all";
-  cookingTime: "all" | "0-30" | "30-60" | "60+";
-  sortBy: "newest" | "reviews";
+  category: CategoryValue;
+  cookingTime: CookingTimeValue;
+  sortBy: SortValue;
   language: string;
 }
 
@@ -49,10 +42,11 @@ interface FilterProps {
 }
 
 export default function Filters({ filters, onFilterChange }: FilterProps) {
-  // Helper to update a single filter value
-  const updateFilter = (
-    key: keyof FilterState,
-    value: FilterState[keyof FilterState],
+  // Update a single filter value; the generic keeps key and value correlated so
+  // the compiler rejects e.g. a sortBy value assigned to category.
+  const updateFilter = <K extends keyof FilterState>(
+    key: K,
+    value: FilterState[K],
   ) => {
     onFilterChange({ ...filters, [key]: value });
   };
@@ -60,23 +54,14 @@ export default function Filters({ filters, onFilterChange }: FilterProps) {
   const [languages, setLanguages] = useState(languageDefaultOptions);
 
   useEffect(() => {
-    // Load ISO 639-1 language data
-    const loadLanguages = async () => {
-      try {
-        const ISO6391 = (await import("iso-639-1")).default;
-        const codes = ISO6391.getAllCodes();
-        const langList = codes.map((code) => ({
-          value: code,
-          label: ISO6391.getName(code) + `(${ISO6391.getNativeName(code)})`,
-        }));
-        // Sort by English name
-        langList.sort((a, b) => a.label.localeCompare(b.label));
-        setLanguages([{ value: "all", label: "All Languages" }, ...langList]);
-      } catch (err) {
-        console.error("Failed to load languages:", err);
-      }
-    };
-    loadLanguages();
+    loadLanguages()
+      .then((list) =>
+        setLanguages([
+          { value: "all", label: "All Languages" },
+          ...list.map((l) => ({ value: l.code, label: l.label })),
+        ]),
+      )
+      .catch((err) => console.error("Failed to load languages:", err));
   }, []);
 
   return (
@@ -84,7 +69,7 @@ export default function Filters({ filters, onFilterChange }: FilterProps) {
       {/* Language Filter */}
       <div className="flex-1">
         <label
-          htmlFor="cookingTime"
+          htmlFor="language"
           className="block text-sm font-medium text-ctp-subtext1 mb-1"
         >
           Language
@@ -92,13 +77,8 @@ export default function Filters({ filters, onFilterChange }: FilterProps) {
         <select
           id="language"
           value={filters.language}
-          onChange={(e) =>
-            updateFilter(
-              "language",
-              e.target.value as FilterState[keyof FilterState],
-            )
-          }
-          className="w-full bg-ctp-surface0 border border-ctp-surface1 rounded-lg p-2 text-ctp-text focus:ring-ctp-green focus:border-ctp-green"
+          onChange={(e) => updateFilter("language", e.target.value)}
+          className="w-full bg-ctp-surface0 border border-ctp-surface1 rounded-lg p-2 text-ctp-text focus:outline-none focus:ring-2 focus:ring-ctp-green focus:border-ctp-green"
         >
           {languages.map((t) => (
             <option key={t.value} value={t.value}>
@@ -120,12 +100,9 @@ export default function Filters({ filters, onFilterChange }: FilterProps) {
           id="category"
           value={filters.category}
           onChange={(e) =>
-            updateFilter(
-              "category",
-              e.target.value as FilterState[keyof FilterState],
-            )
+            updateFilter("category", e.target.value as FilterState["category"])
           }
-          className="w-full bg-ctp-surface0 border border-ctp-surface1 rounded-lg p-2 text-ctp-text focus:ring-ctp-green focus:border-ctp-green"
+          className="w-full bg-ctp-surface0 border border-ctp-surface1 rounded-lg p-2 text-ctp-text focus:outline-none focus:ring-2 focus:ring-ctp-green focus:border-ctp-green"
         >
           {categories.map((c) => (
             <option key={c.value} value={c.value}>
@@ -149,10 +126,10 @@ export default function Filters({ filters, onFilterChange }: FilterProps) {
           onChange={(e) =>
             updateFilter(
               "cookingTime",
-              e.target.value as FilterState[keyof FilterState],
+              e.target.value as FilterState["cookingTime"],
             )
           }
-          className="w-full bg-ctp-surface0 border border-ctp-surface1 rounded-lg p-2 text-ctp-text focus:ring-ctp-green focus:border-ctp-green"
+          className="w-full bg-ctp-surface0 border border-ctp-surface1 rounded-lg p-2 text-ctp-text focus:outline-none focus:ring-2 focus:ring-ctp-green focus:border-ctp-green"
         >
           {cookingTimes.map((t) => (
             <option key={t.value} value={t.value}>
@@ -174,12 +151,9 @@ export default function Filters({ filters, onFilterChange }: FilterProps) {
           id="sortBy"
           value={filters.sortBy}
           onChange={(e) =>
-            updateFilter(
-              "sortBy",
-              e.target.value as FilterState[keyof FilterState],
-            )
+            updateFilter("sortBy", e.target.value as FilterState["sortBy"])
           }
-          className="w-full bg-ctp-surface0 border border-ctp-surface1 rounded-lg p-2 text-ctp-text focus:ring-ctp-green focus:border-ctp-green"
+          className="w-full bg-ctp-surface0 border border-ctp-surface1 rounded-lg p-2 text-ctp-text focus:outline-none focus:ring-2 focus:ring-ctp-green focus:border-ctp-green"
         >
           {sortOptions.map((s) => (
             <option key={s.value} value={s.value}>

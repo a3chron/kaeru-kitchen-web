@@ -1,4 +1,4 @@
-# n-recipe web hub
+# Kaeru's Kitchen Hub
 
 This is a simple [Next.js](https://nextjs.org/) Template.
 
@@ -36,6 +36,11 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+
+## TODO
+
+- [x] Add rate limiting to API routes (Upstash Redis; writes 5/min, reads 60/min per IP — see `lib/rate-limit.ts`)
+- [ ] Recreate the database on the fresh Supabase project per `db/README.md` (schema migration + `db/policies.sql`). The policies file already includes the hardening: no anon grants or read policies (service-role only), pinned function `search_path`.
 
 # Media
 

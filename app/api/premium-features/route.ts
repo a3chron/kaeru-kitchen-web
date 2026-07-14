@@ -2,30 +2,19 @@ import { NextResponse } from "next/server";
 
 const PREMIUM_FEATURES = {
   existing: [
-    "Ingredients screen (e.g. show me recipes for what I have in my fridge)",
-    "Browse n-recipe hub recipes directly in the app",
-    "New category: drinks",
-    "Vibrant colors",
-    "Font selection",
     "Import Helper Tool - Automatically convert recipes from websites, PDFs or images to the correct format to import them -> will come to free too",
-    "View what changed from your installed version to the latest one",
     "Several small to big UX / UI improvements",
     "Haptic feedback for several components",
-    "Bigger limit for servings",
-    "More than three tags",
   ],
   immediate: [
     "Accounts",
-    "Improved ingredient handling",
     "Finish Translations for free & premium",
     "Tighten security for export/import (only allowed format (strip rest to ensure future compatibility), escaping if not automatically done) *free version too*",
     "See the status of your published recipes (waiting for approval, approved, rejected)",
     "Export recipes as PDF",
-    "Show in tag settings which tags have 0 recipes",
   ],
   midterm: [
     "Improve add recipe screen",
-    "Fat, calories & other info for recipes",
     "Select which recipes and tags to import",
     "Add custom themes (+ option for sharing these easily, json, maybe qr later on)",
     "For first time recipes option instead of timer a stopwatch, to get time (or average times) for this step",

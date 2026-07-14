@@ -1,32 +1,53 @@
-import { NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase-client";
+import { NextRequest, NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
+import { supabaseServer } from "@/lib/supabase-server";
+import { withApiHandler } from "@/lib/api-handler";
 
-export async function GET() {
-  try {
-    const { data, error } = await supabase
-      .from("recipes-hub")
-      .select("*")
-      .gt("flags", 0)
-      .order("flags", { ascending: false });
+/** Constant-time bearer-token check against MODERATION_API_KEY. */
+function isAuthorized(request: NextRequest): boolean {
+  const expected = process.env.MODERATION_API_KEY;
+  if (!expected) return false; // fail closed (handled as 503 by caller)
 
-    if (error) {
-      console.error("Error fetching flagged recipes:", error);
-      return NextResponse.json(
-        { error: "Failed to fetch flagged recipes" },
-        { status: 500 },
-      );
-    }
+  const header = request.headers.get("authorization") ?? "";
+  const prefix = "Bearer ";
+  if (!header.startsWith(prefix)) return false;
+  const provided = header.slice(prefix.length);
 
-    return NextResponse.json({
-      success: true,
-      count: data?.length || 0,
-      recipes: data || [],
-    });
-  } catch (error: any) {
-    console.error("API error:", error);
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
+
+export const GET = withApiHandler(async (request) => {
+  if (!process.env.MODERATION_API_KEY) {
+    // No moderation key configured — refuse rather than expose the data.
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { error: "Moderation endpoint not configured" },
+      { status: 503 },
+    );
+  }
+
+  if (!isAuthorized(request)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { data, error } = await supabaseServer
+    .from("recipes_hub")
+    .select("*")
+    .gt("flags", 0)
+    .order("flags", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching flagged recipes:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch flagged recipes" },
       { status: 500 },
     );
   }
-}
+
+  return NextResponse.json({
+    success: true,
+    count: data?.length || 0,
+    recipes: data || [],
+  });
+});

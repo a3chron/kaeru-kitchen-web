@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
+import Header from "@/components/header";
 import RecipeDetail from "@/components/recipe-detail";
-import { getRecipe } from "../../actions";
+import OpenInApp from "@/components/open-in-app";
+import { getRecipe } from "../../recipe-data";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -15,9 +17,19 @@ export default async function RecipePage({ params }: PageProps) {
   }
 
   return (
-    <main className="max-w-5xl mx-auto p-4 md:p-6">
-      <RecipeDetail recipe={recipe} />
-    </main>
+    <>
+      <Header />
+      <main className="max-w-5xl mx-auto p-4 md:p-6">
+        <div className="mb-4 p-4 bg-ctp-mantle border border-ctp-surface0 rounded-lg">
+          <p className="text-ctp-subtext0 text-sm mb-3">
+            Have the app? Open this recipe in Kaeru&apos;s Kitchen.
+          </p>
+          <OpenInApp path={`app/recipe-hub/${id}`} />
+        </div>
+
+        <RecipeDetail recipe={recipe} />
+      </main>
+    </>
   );
 }
 
@@ -31,8 +43,12 @@ export async function generateMetadata({ params }: PageProps) {
     };
   }
 
+  const title = `${recipe.title} - Kaeru's Kitchen`;
+  const description = `View the recipe for "${recipe.title}" by "${recipe.author ?? "Anonymous"}"`;
   return {
-    title: `${recipe.title} - n-recipe`,
-    description: `View the recipe for "${recipe.title}" by "${recipe.author}"`,
+    title,
+    description,
+    openGraph: { title, description, type: "article" },
+    twitter: { card: "summary", title, description },
   };
 }

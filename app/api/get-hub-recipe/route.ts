@@ -1,46 +1,43 @@
-import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase-client";
+import { NextResponse } from "next/server";
+import { supabaseServer } from "@/lib/supabase-server";
+import { isUuid } from "@/lib/request-utils";
+import { checkRateLimit, rateLimited } from "@/lib/rate-limit";
+import { withApiHandler } from "@/lib/api-handler";
 
-export async function GET(request: NextRequest) {
-  try {
-    const searchParams = request.nextUrl.searchParams;
-    const id = searchParams.get("id");
+export const GET = withApiHandler(async (request) => {
+  const rl = await checkRateLimit(request, "get-hub-recipe", "read");
+  if (!rl.ok) return rateLimited(rl.retryAfter);
 
-    if (!id) {
-      return NextResponse.json(
-        { error: "Missing id parameter" },
-        { status: 400 },
-      );
-    }
+  const id = request.nextUrl.searchParams.get("id");
 
-    const { data, error } = await supabase
-      .from("recipes-hub")
-      .select("*")
-      .eq("id", id)
-      .eq("is_approved", true)
-      .single();
-
-    if (error) {
-      console.error("Error fetching recipe:", error);
-      return NextResponse.json(
-        { error: "Failed to fetch recipe" },
-        { status: 500 },
-      );
-    }
-
-    if (!data) {
-      return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      recipe: data,
-    });
-  } catch (error: any) {
-    console.error("API error:", error);
+  if (!isUuid(id)) {
     return NextResponse.json(
-      { error: error.message || "Internal server error" },
+      { error: "Missing or invalid id parameter" },
+      { status: 400 },
+    );
+  }
+
+  const { data, error } = await supabaseServer
+    .from("recipes_hub")
+    .select("*")
+    .eq("id", id)
+    .eq("is_approved", true)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error fetching recipe:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch recipe" },
       { status: 500 },
     );
   }
-}
+
+  if (!data) {
+    return NextResponse.json({ error: "Recipe not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({
+    success: true,
+    recipe: data,
+  });
+});

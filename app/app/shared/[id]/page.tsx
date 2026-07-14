@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
+import Header from "@/components/header";
 import RecipeDetail from "@/components/recipe-detail";
-import { getSharedRecipe } from "../../actions";
+import OpenInApp from "@/components/open-in-app";
+import { getSharedRecipe } from "../../recipe-data";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -15,18 +17,28 @@ export default async function SharedRecipePage({ params }: PageProps) {
   }
 
   return (
-    <main className="max-w-5xl mx-auto p-4 md:p-6">
-      <div className="mb-4 p-4 bg-ctp-surface0 border border-ctp-yellow rounded-lg">
-        <p className="text-ctp-text text-sm">
-          <span className="font-semibold text-ctp-yellow">
-            📢 Shared Recipe:
-          </span>{" "}
-          This recipe was shared directly and will be available for 30 days.
-        </p>
-      </div>
+    <>
+      <Header />
+      <main className="max-w-5xl mx-auto p-4 md:p-6">
+        <div className="mb-4 p-4 bg-ctp-surface0 border border-ctp-yellow rounded-lg">
+          <p className="text-ctp-text text-sm">
+            <span className="font-semibold text-ctp-yellow">
+              📢 Shared Recipe:
+            </span>{" "}
+            This recipe was shared directly with you.
+          </p>
+        </div>
 
-      <RecipeDetail recipe={recipe_data} shared />
-    </main>
+        <div className="mb-4 p-4 bg-ctp-mantle border border-ctp-surface0 rounded-lg">
+          <p className="text-ctp-subtext0 text-sm mb-3">
+            Have the app? Open this recipe in Kaeru&apos;s Kitchen.
+          </p>
+          <OpenInApp path={`app/shared/${id}`} />
+        </div>
+
+        <RecipeDetail recipe={recipe_data} shared />
+      </main>
+    </>
   );
 }
 
@@ -40,8 +52,15 @@ export async function generateMetadata({ params }: PageProps) {
     };
   }
 
+  const title = `${recipe_data.title} - Shared Recipe`;
+  const description = `${recipe_data.author ?? "Someone"} shared: ${recipe_data.title}`;
   return {
-    title: `${recipe_data.title} - Shared Recipe`,
-    description: `${recipe_data.author} shared: ${recipe_data.title}`,
+    title,
+    description,
+    // Person-to-person shares aren't meant to be discoverable via search
+    // engines — only the public hub pages should be indexed.
+    robots: { index: false, follow: false },
+    openGraph: { title, description, type: "article" },
+    twitter: { card: "summary", title, description },
   };
 }
