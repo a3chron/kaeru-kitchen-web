@@ -20,7 +20,10 @@ jobs:
           node-version-file: ".nvmrc"
 
       - name: Install PNPM
-        run: npm install -g pnpm@9.6.0
+        # Must be pnpm >= 10: pnpm-workspace.yaml holds the allowBuilds config
+        # (a pnpm 10+ key); pnpm 9 treats the file as a workspace definition and
+        # aborts install with "packages field missing or empty".
+        run: npm install -g pnpm@11
 
       - name: Install dependencies
         run: pnpm install
