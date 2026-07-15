@@ -2,9 +2,12 @@
 
 import { Smartphone } from "lucide-react";
 import {
+  APP_PACKAGE_FREE,
+  APP_PACKAGE_PREMIUM,
   APP_SCHEMES,
   PLAY_STORE_URL_FREE,
   PLAY_STORE_URL_PREMIUM,
+  androidIntentUrl,
   deepLinkTo,
 } from "@/lib/constants";
 
@@ -23,18 +26,28 @@ interface OpenInAppProps {
  * silently blocked, and its blur/visibility heuristic misread any window switch
  * as "handled". Explicit per-app buttons plus both store links are unambiguous
  * and don't depend on guessing whether the app opened.
+ *
+ * On Android we use an `intent://` URL with `browser_fallback_url` so a missing
+ * app auto-redirects to that variant's Play Store page instead of erroring;
+ * elsewhere we keep the plain custom-scheme navigation.
  */
 export default function OpenInApp({ path }: OpenInAppProps) {
-  const open = (scheme: string) => () => {
-    window.location.href = deepLinkTo(scheme, path);
-  };
+  const open =
+    (scheme: string, packageName: string, storeUrl: string) => () => {
+      const isAndroid =
+        typeof navigator !== "undefined" &&
+        /Android/i.test(navigator.userAgent);
+      window.location.href = isAndroid
+        ? androidIntentUrl(scheme, packageName, path, storeUrl)
+        : deepLinkTo(scheme, path);
+    };
 
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col sm:flex-row gap-2">
         <button
           type="button"
-          onClick={open(APP_SCHEMES[0])}
+          onClick={open(APP_SCHEMES[0], APP_PACKAGE_FREE, PLAY_STORE_URL_FREE)}
           className="flex items-center justify-center gap-2 font-semibold px-4 py-3 rounded-lg bg-ctp-green text-ctp-base transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-ctp-blue"
         >
           <Smartphone size={18} />
@@ -42,7 +55,11 @@ export default function OpenInApp({ path }: OpenInAppProps) {
         </button>
         <button
           type="button"
-          onClick={open(APP_SCHEMES[1])}
+          onClick={open(
+            APP_SCHEMES[1],
+            APP_PACKAGE_PREMIUM,
+            PLAY_STORE_URL_PREMIUM,
+          )}
           className="flex items-center justify-center gap-2 font-semibold px-4 py-3 rounded-lg bg-ctp-surface0 text-ctp-text transition-colors hover:bg-ctp-surface1 focus-visible:outline-2 focus-visible:outline-ctp-blue"
         >
           <Smartphone size={18} />

@@ -4,6 +4,7 @@ import { FilterState } from "@/components/filters";
 import { supabaseServer } from "@/lib/supabase-server";
 import { RECIPES_PAGE_SIZE, clampPage } from "@/lib/constants";
 import { checkRateLimitForAction } from "@/lib/rate-limit";
+import { HUB_PUBLIC_COLUMNS } from "@/app/app/recipe-data";
 import { HubRecipeRow } from "@/types/recipe";
 
 export async function fetchRecipes(
@@ -41,7 +42,9 @@ export async function fetchRecipes(
 
   let query = supabaseServer
     .from("recipes_hub")
-    .select("*")
+    // Public columns only — never leak internal moderation fields (flags,
+    // is_approved) to clients. is_approved stays usable as a WHERE filter below.
+    .select(HUB_PUBLIC_COLUMNS)
     .eq("is_approved", true);
 
   // 1. Category Filter

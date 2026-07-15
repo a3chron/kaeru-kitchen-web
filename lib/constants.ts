@@ -96,3 +96,27 @@ export const PLAY_STORE_URL = PLAY_STORE_URL_FREE;
 export function deepLinkTo(scheme: string, path: string): string {
   return `${scheme}:///${path}`;
 }
+
+/** Android application ids, paired with the schemes/stores above. */
+export const APP_PACKAGE_FREE = "com.a3chron.nrecipe";
+export const APP_PACKAGE_PREMIUM = "com.a3chron.nrecipe_premium";
+
+/**
+ * Android `intent://` URL that opens the app and, crucially, auto-redirects to
+ * the Play Store (`browser_fallback_url`) when the app isn't installed — so the
+ * "Open in app" button no longer dead-ends on a "can't open page" error. Only
+ * meaningful on Android Chrome; callers fall back to `deepLinkTo` elsewhere.
+ */
+export function androidIntentUrl(
+  scheme: string,
+  packageName: string,
+  path: string,
+  fallbackUrl: string,
+): string {
+  return `intent://${path}#Intent;scheme=${scheme};package=${packageName};S.browser_fallback_url=${encodeURIComponent(
+    fallbackUrl,
+  )};end`;
+}
+
+/** Canonical site origin (no trailing slash). Used for metadata, sitemap, robots. */
+export const SITE_URL = "https://kaeru-kitchen-hub.vercel.app";

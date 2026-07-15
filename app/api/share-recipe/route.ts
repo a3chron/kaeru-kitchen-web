@@ -7,12 +7,15 @@ import { readJsonBody } from "@/lib/request-utils";
 import { withApiHandler } from "@/lib/api-handler";
 
 export const POST = withApiHandler(async (request) => {
-  const rl = await checkRateLimit(request, "share-recipe");
+  const rl = await checkRateLimit(request, "share-recipe", "share");
   if (!rl.ok) return rateLimited(rl.retryAfter);
 
   const parsed = await readJsonBody(request);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+    return NextResponse.json(
+      { error: parsed.error },
+      { status: parsed.status },
+    );
   }
   const { recipe, author } = parsed.body;
 
@@ -21,7 +24,10 @@ export const POST = withApiHandler(async (request) => {
     author != null &&
     (typeof author !== "string" || author.trim().length > 100)
   ) {
-    return NextResponse.json({ error: "Invalid author field" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Invalid author field" },
+      { status: 400 },
+    );
   }
 
   // Validate single recipe (wrap in array for validation function)

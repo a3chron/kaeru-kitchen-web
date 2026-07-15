@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono } from "next/font/google";
+import { SITE_URL } from "@/lib/constants";
 import "./globals.css";
 
 const plex = IBM_Plex_Mono({
@@ -8,7 +9,7 @@ const plex = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://kaeru-kitchen-hub.vercel.app"),
+  metadataBase: new URL(SITE_URL),
   title: "Kaeru's Kitchen Hub",
   description: "Browse and share Kaeru's Kitchen recipes",
   openGraph: {

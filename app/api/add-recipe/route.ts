@@ -9,12 +9,15 @@ import { withApiHandler } from "@/lib/api-handler";
 const MAX_RECIPES_PER_REQUEST = 20;
 
 export const POST = withApiHandler(async (request) => {
-  const rl = await checkRateLimit(request, "add-recipe");
+  const rl = await checkRateLimit(request, "add-recipe", "publish");
   if (!rl.ok) return rateLimited(rl.retryAfter);
 
   const parsed = await readJsonBody(request);
   if (!parsed.ok) {
-    return NextResponse.json({ error: parsed.error }, { status: parsed.status });
+    return NextResponse.json(
+      { error: parsed.error },
+      { status: parsed.status },
+    );
   }
   const body = parsed.body;
   const { author, language } = body;
