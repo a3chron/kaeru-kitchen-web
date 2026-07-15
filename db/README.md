@@ -12,9 +12,10 @@ used for **schema + migrations only**; the app's runtime data access stays on
 
 ## One-time setup
 
-1. In Supabase → Project Settings → API, copy the **service_role** key into
-   `SUPABASE_SERVICE_ROLE_KEY` (Vercel: Production + Preview, **not** `NEXT_PUBLIC`;
-   local: `.env.local`).
+1. In Supabase → Project Settings → API keys, create/copy a **secret key**
+   (`sb_secret_...` — the new-style replacement for the legacy service_role JWT)
+   into `SUPABASE_SECRET_KEY` (Vercel: Production + Preview, **not**
+   `NEXT_PUBLIC`; local: `.env.local`).
 2. In Supabase → Connect, copy the **Session pooler** connection string (port 5432)
    into `DATABASE_URL` (local `.env.local` only — migrations don't run on Vercel).
 3. Provision Upstash Redis (Vercel Marketplace injects
