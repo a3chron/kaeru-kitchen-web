@@ -17,8 +17,11 @@ used for **schema + migrations only**; the app's runtime data access stays on
    local: `.env.local`).
 2. In Supabase → Connect, copy the **Session pooler** connection string (port 5432)
    into `DATABASE_URL` (local `.env.local` only — migrations don't run on Vercel).
-3. (Optional) Provision Upstash Redis (Vercel Marketplace injects
-   `UPSTASH_REDIS_REST_URL`/`TOKEN`) to enable rate limiting.
+3. Provision Upstash Redis (Vercel Marketplace injects
+   `UPSTASH_REDIS_REST_URL`/`TOKEN`). **Required in production**: the rate
+   limiter fails closed there (`lib/rate-limit.ts`), so without Upstash every
+   POST endpoint (publish, share, flag, rate) permanently returns 429. Only
+   local dev works without it.
 4. Generate `MODERATION_API_KEY` and `IP_HASH_SALT` (`openssl rand -hex 32` each) and
    set them in Vercel + `.env.local`.
 
@@ -44,3 +47,15 @@ four tables.
 
 > ⚠️ Deploy the app code (which moves all writes server-side) in the **same release**
 > as this migration. Once RLS is on, the anon key can no longer insert.
+
+## Moderation
+
+To re-approve a recipe that was auto-hidden by flags, run (SQL editor):
+
+```sql
+select public.approve_recipe('<recipe uuid>');
+```
+
+Don't just set `is_approved = true` by hand — the function also deletes the
+recipe's `recipe_flags` rows and resets `flags`, otherwise the next single flag
+would immediately hide the recipe again (threshold check counts historic flags).

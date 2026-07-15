@@ -32,7 +32,12 @@ create index if not exists recipes_hub_title_trgm_idx
 -- Cooking-time buckets are de-overlapped (30 belongs only to the 0-30 bucket).
 -- limit_count is clamped to [1, 100] and offset_count floored at 0 inside the
 -- function, so callers can't request an unbounded or negative page.
-create or replace function public.fuzzy_search_recipes(
+-- Returns only PUBLIC columns (never flags / is_approved) so the search path
+-- can't leak internal moderation fields to clients. Changing the return type
+-- requires dropping the old function first.
+drop function if exists public.fuzzy_search_recipes(text, text, text, text, text, integer, integer);
+--> statement-breakpoint
+create function public.fuzzy_search_recipes(
   search_text text default '',
   category_filter text default 'all',
   language_filter text default 'all',
@@ -41,12 +46,24 @@ create or replace function public.fuzzy_search_recipes(
   limit_count integer default 30,
   offset_count integer default 0
 )
-returns setof public.recipes_hub
+returns table (
+  id uuid,
+  created_at timestamptz,
+  recipe_data jsonb,
+  title text,
+  category text,
+  author text,
+  language text,
+  total_cooking_time integer,
+  average_review real,
+  review_count integer
+)
 language sql
 stable
 set search_path = ''
 as $$
-  select r.*
+  select r.id, r.created_at, r.recipe_data, r.title, r.category, r.author,
+         r.language, r.total_cooking_time, r.average_review, r.review_count
   from public.recipes_hub r
   where r.is_approved = true
     and (category_filter = 'all' or r.category = category_filter)
@@ -108,7 +125,9 @@ begin
           -- Auto-hide once flags reach the threshold. Every read path filters
           -- is_approved = true, so this removes abusive content from public view
           -- until a moderator re-approves it (get-flagged-recipes still lists it).
-          is_approved = case when flags + 1 >= 5 then false else is_approved end
+          -- Threshold kept high (manual weekly moderation handles the rest) so a
+          -- handful of flags from a small IP pool can't censor a legit recipe.
+          is_approved = case when flags + 1 >= 15 then false else is_approved end
       where id = p_recipe_id
       returning flags into v_flags;
   else
@@ -124,6 +143,32 @@ revoke execute on function public.increment_recipe_flag(uuid, text)
   from public, anon, authenticated;
 --> statement-breakpoint
 grant execute on function public.increment_recipe_flag(uuid, text) to service_role;
+--> statement-breakpoint
+
+-- --- Moderator re-approval ----------------------------------------------------
+-- Re-approving must also clear the flag history: the existing recipe_flags rows
+-- still count toward the auto-hide threshold, so without this a re-approved
+-- recipe would be hidden again by the very next single flag.
+create or replace function public.approve_recipe(p_recipe_id uuid)
+returns void
+language plpgsql
+set search_path = ''
+as $$
+begin
+  delete from public.recipe_flags where recipe_id = p_recipe_id;
+
+  update public.recipes_hub
+    set is_approved = true,
+        flags = 0
+    where id = p_recipe_id;
+end;
+$$;
+--> statement-breakpoint
+
+revoke execute on function public.approve_recipe(uuid)
+  from public, anon, authenticated;
+--> statement-breakpoint
+grant execute on function public.approve_recipe(uuid) to service_role;
 --> statement-breakpoint
 
 -- --- Review aggregate maintenance --------------------------------------------

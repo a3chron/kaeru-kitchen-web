@@ -60,17 +60,14 @@ export default function RecipeDetail(props: RecipeDetailProps) {
             <h1 className="text-3xl md:text-4xl font-bold text-ctp-text break-words">
               {recipe_data.title}
             </h1>
-            {/* Review aggregate. No client currently submits ratings, so this
-                shows "0 reviews" until the rating feature is wired up. */}
-            {hub && (
+            {/* Review aggregate. Hidden until at least one review exists, so a
+                recipe with no ratings doesn't show a "0 reviews" line that reads
+                as broken. (Ratings submission isn't wired up on any client yet.) */}
+            {hub && (hub.review_count ?? 0) > 0 && (
               <div className="flex items-center gap-1.5 text-ctp-subtext0 mt-2">
-                {hub.average_review !== 0 && (
-                  <Star size={16} className="text-ctp-yellow" />
-                )}
+                <Star size={16} className="text-ctp-yellow" />
                 <span>
-                  {hub.average_review === 0
-                    ? `${hub.review_count ?? 0} reviews`
-                    : `${hub.average_review.toFixed(1)} (${hub.review_count ?? 0} reviews)`}
+                  {`${hub.average_review.toFixed(1)} (${hub.review_count ?? 0} reviews)`}
                 </span>
               </div>
             )}

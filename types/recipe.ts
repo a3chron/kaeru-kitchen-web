@@ -59,13 +59,15 @@ interface BaseRecipeRow {
 
 /**
  * A row from `recipes_hub` (the public, moderated hub feed). All hub-only
- * columns (language / moderation flags / review aggregates) are NOT NULL with
- * defaults, so they are always present on a fetched row.
+ * columns are NOT NULL with defaults in the DB, but the moderation fields
+ * (`is_approved`/`flags`) are optional here because no public read path
+ * returns them anymore: the search RPC and `HUB_PUBLIC_COLUMNS` both exclude
+ * them. Only the moderation endpoint sees them populated.
  */
 export interface HubRecipeRow extends BaseRecipeRow {
   language: string;
-  is_approved: boolean;
-  flags: number;
+  is_approved?: boolean;
+  flags?: number;
   average_review: number;
   review_count: number;
 }
