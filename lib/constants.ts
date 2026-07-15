@@ -119,4 +119,4 @@ export function androidIntentUrl(
 }
 
 /** Canonical site origin (no trailing slash). Used for metadata, sitemap, robots. */
-export const SITE_URL = "https://kaeru-kitchen-hub.vercel.app";
+export const SITE_URL = "https://kaeru-kitchen.vercel.app";
