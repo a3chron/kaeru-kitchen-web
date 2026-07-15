@@ -1,7 +1,11 @@
+# Postinstall build scripts must be explicitly approved since pnpm 10.
+# `allowBuilds` is the pnpm 11 form, `onlyBuiltDependencies` the pnpm 10 one —
+# keep both in sync. sharp powers Next.js image optimization, esbuild is pulled
+# in by drizzle-kit, unrs-resolver by eslint-config-next.
 allowBuilds:
-  esbuild: set this to true or false
-  sharp: set this to true or false
-  unrs-resolver: set this to true or false
+  esbuild: true
+  sharp: true
+  unrs-resolver: true
 onlyBuiltDependencies:
   - sharp
   - unrs-resolver
